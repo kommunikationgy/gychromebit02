@@ -135,7 +135,7 @@
 </head>
 <body>
 
-  <!-- Google Presentation -->
+  <!-- Google Presentation (Chromebit 02) -->
   <div id="presentation-container">
     <iframe 
       id="presentation-frame"
@@ -181,46 +181,47 @@
 
   <script>
     // ==========================================
-    // KONFIGURATION
+    // 1. KONFIGURATION & SCHEMAN
     // ==========================================
     const PRESENTATION_URL = "https://docs.google.com/presentation/d/e/2PACX-1vTRyxtWyqMlFX3S7MwJd4VKgzeqk11UFB6iSvRyU7TbOkqzHXsBubf1KTXS5m6yhn6aDphEjseU0-As/embed?start=true&loop=true&delayms=5000&rm=minimal";
     const RSS_MENU_URL = "https://www.skolmat.info/api/public/matsedlar/C3EC1DB9-EE3A-4BD4-B7F5-D0793C570944/rss?period=today";
 
-    // 1. Ordinarie schema (måndag–fredag)
+    // Testläge: Sätt till true om du testar utanför skoltid och vill tvinga fram skärmen direkt
+    const TEST_MODE = false;
+
+    // Ordinarie öppettider (måndag–fredag kl. 07:30–17:00)
     const REGULAR_START_HOUR = 7;
     const REGULAR_START_MINUTE = 30;
     const REGULAR_END_HOUR = 17;
     const REGULAR_END_MINUTE = 0;
     const WEEKDAYS_ONLY = true;
 
-    // 2. Specialdatum: 14 november 2026 kl. 07:00–15:00
+    // Specialdag: 14 november 2026 (kl. 07:00–15:00)
     const SPECIAL_YEAR = 2026;
-    const SPECIAL_MONTH = 11; // November
-    const SPECIAL_DAY = 14;   // 14:e
+    const SPECIAL_MONTH = 11;
+    const SPECIAL_DAY = 14;
     const SPECIAL_START_HOUR = 7;
     const SPECIAL_START_MINUTE = 0;
     const SPECIAL_END_HOUR = 15;
     const SPECIAL_END_MINUTE = 0;
 
-    // Sätt till false om du vill att rutorna för klocka och matsedel
-    // ALLTID ska synas (även utanför öppettider).
-    // Sätt till true om hela skärmen ska bli helt svart vid inaktivitet.
+    // Dölj överlägget när skärmen är inaktiv
     const HIDE_WHEN_INACTIVE = true;
 
     let isActiveState = null;
 
     // ==========================================
-    // 1. KLOCKOR, DATUM OCH SCHEMA
+    // 2. KLOCKOR, DATUM OCH SCHEMA
     // ==========================================
     function updateDisplayAndSchedule() {
       const now = new Date();
       
-      // Digital tid
+      // Korrigerad digital tid
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
-      document.getElementById('clock-time').textContent = `hours:{minutes}`;
+      document.getElementById('clock-time').textContent = `${hours}:${minutes}`;
 
-      // Fullt datum med stor begynnelsebokstav
+      // Fullt datum på svenska
       const weekday = now.toLocaleDateString('sv-SE', { weekday: 'long' });
       const month = now.toLocaleDateString('sv-SE', { month: 'long' });
       const day = now.getDate();
@@ -229,7 +230,7 @@
       const capMonth = month.charAt(0).toUpperCase() + month.slice(1);
       document.getElementById('clock-date').textContent = `${capWeekday} den ${day} ${capMonth}`;
 
-      // Analog urtavla (vinklar)
+      // Analog urtavla
       const sec = now.getSeconds();
       const min = now.getMinutes();
       const hr = now.getHours();
@@ -242,30 +243,33 @@
       document.getElementById('min-hand').setAttribute('transform', `rotate(${minAngle} 50 50)`);
       document.getElementById('hour-hand').setAttribute('transform', `rotate(${hrAngle} 50 50)`);
 
-      // Schemavalidering
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth() + 1; // 1-12
-      const currentDate = now.getDate();
-      const currentMinuteOfDay = now.getHours() * 60 + now.getMinutes();
-
+      // Schemaberäkning
       let shouldBeActive = false;
 
-      // Specialregel: 14 november 2026 (07:00–15:00)
-      if (currentYear === SPECIAL_YEAR && currentMonth === SPECIAL_MONTH && currentDate === SPECIAL_DAY) {
-        const specialStart = SPECIAL_START_HOUR * 60 + SPECIAL_START_MINUTE;
-        const specialEnd = SPECIAL_END_HOUR * 60 + SPECIAL_END_MINUTE;
-        shouldBeActive = (currentMinuteOfDay >= specialStart && currentMinuteOfDay < specialEnd);
+      if (TEST_MODE) {
+        shouldBeActive = true;
       } else {
-        // Ordinarie schema
-        const startMinute = REGULAR_START_HOUR * 60 + REGULAR_START_MINUTE;
-        const endMinute = REGULAR_END_HOUR * 60 + REGULAR_END_MINUTE;
-        shouldBeActive = (currentMinuteOfDay >= startMinute && currentMinuteOfDay < endMinute);
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth() + 1;
+        const curDate = now.getDate();
+        const currentMinuteOfDay = now.getHours() * 60 + now.getMinutes();
 
-        if (WEEKDAYS_ONLY) {
+        // 14 november 2026 kl. 07:00–15:00
+        const isSpecialEvent = (curYear === SPECIAL_YEAR && curMonth === SPECIAL_MONTH && curDate === SPECIAL_DAY);
+
+        if (isSpecialEvent) {
+          const specStart = SPECIAL_START_HOUR * 60 + SPECIAL_START_MINUTE;
+          const specEnd = SPECIAL_END_HOUR * 60 + SPECIAL_END_MINUTE;
+          shouldBeActive = (currentMinuteOfDay >= specStart && currentMinuteOfDay < specEnd);
+        } else {
+          // Ordinarie måndag–fredag
           const dayOfWeek = now.getDay();
-          if (dayOfWeek === 0 || dayOfWeek === 6) {
-            shouldBeActive = false; // Lördag eller söndag
-          }
+          const isWeekday = (dayOfWeek >= 1 && dayOfWeek <= 5);
+
+          const regStart = REGULAR_START_HOUR * 60 + REGULAR_START_MINUTE;
+          const regEnd = REGULAR_END_HOUR * 60 + REGULAR_END_MINUTE;
+
+          shouldBeActive = isWeekday && (currentMinuteOfDay >= regStart && currentMinuteOfDay < regEnd);
         }
       }
 
@@ -301,12 +305,12 @@
     setInterval(updateDisplayAndSchedule, 1000);
 
     // ==========================================
-    // 2. MATSEDEL MED CORS-FALLBACKS
+    // 3. MATSEDEL MED PROXY-FALLBACKS
     // ==========================================
     async function fetchMenuData() {
-      // Nivå 1: Direkt anrop med tidsstämpel
+      // 1. Direkt anrop
       try {
-        const res = await fetch(`RSSMENUURL&t={Date.now()}`, { cache: 'no-store' });
+        const res = await fetch(`${RSS_MENU_URL}&_t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const xml = await res.text();
           const items = parseXmlFeed(xml);
@@ -314,9 +318,9 @@
         }
       } catch (e) {}
 
-      // Nivå 2: RSS2JSON proxytjänst
+      // 2. RSS2JSON proxy
       try {
-        const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=encodeURIComponent(RSSMENUURL)&t={Date.now()}`);
+        const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_MENU_URL)}&_t=${Date.now()}`);
         if (res.ok) {
           const json = await res.json();
           if (json.status === 'ok' && Array.isArray(json.items) && json.items.length > 0) {
@@ -329,9 +333,9 @@
         }
       } catch (e) {}
 
-      // Nivå 3: AllOrigins proxy för rå XML
+      // 3. AllOrigins proxy
       try {
-        const res = await fetch(`https://api.allorigins.win/raw?url=encodeURIComponent(RSSMENUURL)&t={Date.now()}`);
+        const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(RSS_MENU_URL)}&_t=${Date.now()}`);
         if (res.ok) {
           const xml = await res.text();
           const items = parseXmlFeed(xml);
@@ -339,7 +343,7 @@
         }
       } catch (e) {}
 
-      // Nivå 4: CodeTabs CORS proxy
+      // 4. CodeTabs CORS proxy
       try {
         const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(RSS_MENU_URL)}`);
         if (res.ok) {
@@ -370,7 +374,6 @@
     function findTodayItem(items) {
       if (!items || items.length === 0) return null;
 
-      // När API anropas med period=today finns normalt exakt en dags meny
       if (items.length === 1) {
         return items[0];
       }
@@ -386,7 +389,7 @@
 
       match = items.find(i => {
         const str = `${i.title || ''} ${i.pubDate || ''}`;
-        return str.includes(todayISO) || str.includes(`dayNum/{monthNum}`);
+        return str.includes(todayISO) || str.includes(`${dayNum}/${monthNum}`);
       });
       if (match) return match;
 
@@ -417,7 +420,7 @@
       const items = await fetchMenuData();
 
       if (!items || items.length === 0) {
-        menuEl.textContent = "Ingen matsedel angiven för idag.";
+        menuEl.textContent = "Ingen lunch serveras idag.";
         return;
       }
 
@@ -425,9 +428,9 @@
       if (todayItem) {
         const desc = cleanText(todayItem.description);
         const title = cleanText(todayItem.title);
-        menuEl.textContent = desc || title || "Ingen meny angiven för idag.";
+        menuEl.textContent = desc || title || "Ingen matsedel angiven för idag.";
       } else {
-        menuEl.textContent = "Ingen matsedel angiven för idag.";
+        menuEl.textContent = "Ingen lunch serveras idag.";
       }
     }
 
@@ -435,9 +438,9 @@
     setInterval(updateLunchMenu, 30 * 60 * 1000);
 
     // ==========================================
-    // 3. UNDERHÅLL OCH MINNESRENSNING
+    // 4. DRIFT & MINNESRENSNING
     // ==========================================
-    // Mjuk omläsning av presentationen var 15:e minut
+    // Mjuk uppdatering av presentationen var 15:e minut
     setInterval(function() {
       if (isActiveState) {
         const iframe = document.getElementById('presentation-frame');
@@ -447,7 +450,7 @@
       }
     }, 15 * 60 * 1000);
 
-    // Hård minnestömning (reload) kl. 03:00 varje natt
+    // Omladdning kl. 03:00 varje natt för att rensa RAM-minnet
     setInterval(function() {
       const now = new Date();
       if (now.getHours() === 3 && now.getMinutes() === 0) {
@@ -457,4 +460,3 @@
   </script>
 </body>
 </html>
-
